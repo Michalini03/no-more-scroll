@@ -76,4 +76,4 @@ A userscript can read and change everything on the pages it runs on, including l
 
 ## License
 
-No license has been chosen yet.
+[MIT](LICENSE)
