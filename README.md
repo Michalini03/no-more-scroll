@@ -8,7 +8,7 @@ The idea: delete the native apps, use the sites in Safari instead, and let a use
 
 | Script | Site | What it does |
 | --- | --- | --- |
-| [`scripts/instagram-no-reels.user.js`](scripts/instagram-no-reels.user.js) | instagram.com | Hides the Reels and Explore buttons, redirects the Reels and Explore pages to the home page, locks swiping inside a reel (so a reel a friend sends you plays once and you cannot scroll on to the next), tries to switch the home feed to "Following" and hides posts from accounts you do not follow (suggested or sponsored posts). |
+| [`scripts/instagram-no-reels.user.js`](scripts/instagram-no-reels.user.js) | instagram.com | Hides the Reels button, redirects the Reels page to the home page, turns the Explore grid into a search-only page (so you can still look up profiles), locks swiping inside a reel (so a reel a friend sends you plays once and you cannot scroll on to the next), tries to switch the home feed to "Following" and hides posts from accounts you do not follow (suggested or sponsored posts). |
 | [`scripts/youtube-no-shorts.user.js`](scripts/youtube-no-shorts.user.js) | youtube.com | Hides the Shorts shelves, tab and buttons, and turns `/shorts/<id>` links into normal `/watch?v=<id>` pages so you can still watch a Short someone sends you without the swipe feed. |
 
 ## Why Userscripts?
@@ -67,7 +67,7 @@ A site opened in a Safari tab cannot send push notifications on iPhone. Web push
 - **Sites change.** These scripts rely on page structure and wording that Instagram and YouTube can change at any time. If something stops working, open an issue or adjust the selectors.
 - **Instagram "Following" feed.** The redirect to `/?variant=following` is based on how Instagram's web home worked when this was written. It has a 10-second cooldown to avoid redirect loops. If Instagram changes this parameter, delete that block in `redirectIfBlocked`.
 - **Hiding posts from accounts you do not follow** is a heuristic. It hides posts whose header contains a "Follow" button or a "Suggested"/"Sponsored" label (English and Czech). Add your own language to `FOLLOW_WORDS` and `LABELS` in the script.
-- **Explore is blocked** by default because it is another endless feed. On the mobile web it also contains search. If you need search, set `BLOCK_EXPLORE = false` at the top of the Instagram script.
+- **Explore is blocked** by default because it is another endless feed. The search icon and `/explore/search/` still work, so you can look up profiles. Other Explore pages (hashtags, places) redirect home. To allow all of Explore, set `BLOCK_EXPLORE = false` at the top of the Instagram script.
 - Tested on iPhone with Safari and Userscripts. Not tested on Android or desktop.
 
 ## Security note

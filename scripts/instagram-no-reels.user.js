@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         No Reels
-// @description  Hides Reels/Explore nav, redirects feeds home, locks swiping inside reel viewers, Following feed only
+// @description  Hides Reels nav, redirects feeds home (Explore to search), locks swiping inside reel viewers, Following feed only
 // @match        *://*.instagram.com/*
 // @run-at       document-start
 // @noframes
@@ -16,9 +16,14 @@
     ? /^\/(reels\/?|explore(\/.*)?)$/
     : /^\/reels\/?$/;
 
-  var LINK_SELECTOR = BLOCK_EXPLORE
-    ? 'a[href="/reels/"], a[href="/reels"], a[href="/explore/"], a[href="/explore"]'
-    : 'a[href="/reels/"], a[href="/reels"]';
+  var SEARCH_PATH = '/explore/search/';
+  var EXPLORE_ROOT = /^\/explore\/?$/;
+
+  function isSearchPath(p) {
+    return /^\/explore\/search(\/|$)/.test(p);
+  }
+
+  var LINK_SELECTOR = 'a[href="/reels/"], a[href="/reels"]';
 
   function isSingleReelUrl() {
     return /^\/reels?\/[^/]+/.test(location.pathname);
@@ -76,6 +81,11 @@
   }
 
   function redirectIfBlocked() {
+    if (BLOCK_EXPLORE && isSearchPath(location.pathname)) return;
+    if (BLOCK_EXPLORE && EXPLORE_ROOT.test(location.pathname)) {
+      location.replace(SEARCH_PATH);
+      return;
+    }
     if (BLOCKED_PATH.test(location.pathname)) {
       location.replace('/');
       return;
@@ -97,6 +107,18 @@
       el = el.parentElement;
     }
     el.style.setProperty('display', 'none', 'important');
+  }
+
+  // ---------- Search icon goes straight to search ----------
+  // The app's router would open the Explore grid first; load the search page instead.
+  if (BLOCK_EXPLORE) {
+    document.addEventListener('click', function (e) {
+      var a = e.target instanceof Element && e.target.closest('a[href]');
+      if (!a || !EXPLORE_ROOT.test(a.getAttribute('href'))) return;
+      e.preventDefault();
+      e.stopPropagation();
+      location.assign(SEARCH_PATH);
+    }, true);
   }
 
   // ---------- Hide posts from accounts you do not follow ----------
