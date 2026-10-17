@@ -10,6 +10,7 @@ Guidance for Claude Code when working in this repository.
 
 - `scripts/instagram-no-reels.user.js` - Instagram: hides Reels/Explore nav, redirects the feeds home, locks swiping inside reel viewers (including DM overlays), forces the Following feed, hides posts from accounts the user does not follow.
 - `scripts/youtube-no-shorts.user.js` - YouTube: hides Shorts UI, redirects `/shorts/<id>` to `/watch?v=<id>`.
+- `filters/brave.txt` - Brave custom filters for Instagram on iPhone: hides the Reels button and the profile Reels tab, blocks the bare `/reels/` page when loaded directly. No YouTube rules: Brave has a built-in Shorts blocker.
 - `README.md` - why Userscripts is needed, Safari install guide, Shortcuts Home Screen icon tutorial, limitations.
 
 There is no build step, package manager or test suite.
@@ -40,6 +41,7 @@ Both must pass (the grep must print the OK line). Behavior cannot be tested in t
 
 - `/?variant=following` as the Instagram Following feed. If Instagram stops honoring it, remove the home redirect block in `redirectIfBlocked`.
 - The post-hiding heuristic in the Instagram script (Follow button or "Suggested"/"Sponsored" label in the post header, English and Czech) may over- or under-hide when Instagram changes its markup.
+- The `$document` rules in `filters/brave.txt` (blocking the bare `/reels/` page) and whether Brave on iPhone applies them. Custom scriptlets on Brave iOS are tracked in brave/brave-browser#57848 (parent #53511); when they ship, the script's redirects and swipe lock can be ported.
 - Home Screen web apps added through Safari may not load Safari extensions, which is why the README uses Shortcuts for the icon.
 
 ## Debugging a broken script

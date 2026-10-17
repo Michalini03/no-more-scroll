@@ -8,7 +8,7 @@ The idea: delete the native apps, use the sites in Safari instead, and let a use
 
 | Script | Site | What it does |
 | --- | --- | --- |
-| [`scripts/instagram-no-reels.user.js`](scripts/instagram-no-reels.user.js) | instagram.com | Hides the Reels button, redirects the Reels page to the home page, turns the Explore grid into a search-only page (so you can still look up profiles), locks swiping inside a reel (so a reel a friend sends you plays once and you cannot scroll on to the next), tries to switch the home feed to "Following" and hides posts from accounts you do not follow (suggested or sponsored posts). |
+| [`scripts/instagram-no-reels.user.js`](scripts/instagram-no-reels.user.js) | instagram.com | Hides the Reels button, redirects the Reels page to the home page, turns the Explore grid into a search-only page (so you can still look up profiles), locks swiping inside a reel (so a reel a friend sends you, or one you open from a profile's Reels tab, plays once and you cannot scroll on to the next), tries to switch the home feed to "Following" and hides posts from accounts you do not follow (suggested or sponsored posts). |
 | [`scripts/youtube-no-shorts.user.js`](scripts/youtube-no-shorts.user.js) | youtube.com | Hides the Shorts shelves, tab and buttons, and turns `/shorts/<id>` links into normal `/watch?v=<id>` pages so you can still watch a Short someone sends you without the swipe feed. |
 
 ## Why Userscripts?
@@ -36,6 +36,49 @@ Tips:
 - Keep only one copy of each script in the folder. Two files with the same `@name` can confuse the extension.
 - Keep the files pure ASCII. Accented characters caused a script to silently fail to load during development, which is why the Czech words in the Instagram script are written as `\u` escapes.
 - Keep a backup copy outside the Userscripts folder, so you can roll back if a site changes.
+
+## Other browsers on iPhone
+
+Every iPhone browser uses Safari's engine, but only Safari can load Safari extensions such as Userscripts. Other browsers get less.
+
+| Browser | Instagram | YouTube |
+| --- | --- | --- |
+| Safari | Everything (userscript) | Everything (userscript) |
+| Brave | Hiding only (custom filters) | Brave's built-in Shorts blocker |
+| Firefox | Nothing | Nothing |
+
+### Brave
+
+**YouTube:** you do not need anything from this repo. Brave already has a built-in YouTube Shorts blocker, so just turn it on in Brave's settings.
+
+**Instagram setup:**
+
+1. Open [`filters/brave.txt`](filters/brave.txt) (on GitHub, tap **Raw**) and copy all of it.
+2. In Brave, go to Settings -> Shields & Privacy -> Content Filtering -> **Add Custom Filters**.
+3. Paste the text and save.
+4. Make sure Shields are on for instagram.com.
+
+**What the filters do:**
+
+- Hide the Reels button.
+- Hide the Reels tab on profiles. Brave cannot lock swiping, so a reel opened from this tab could lead into the endless feed.
+- Block the Reels page when you open it directly, from a link or by typing the address.
+
+**What they cannot do.** Filters can only hide and block, they cannot run code, so:
+
+- The Reels page is not redirected home, and moving to it from inside the site is not caught. Hiding the button covers the usual way in.
+- Swiping inside a reel is not locked.
+- There is no switch to the "Following" feed and no hiding of posts from accounts you do not follow.
+
+> These rules are not yet tested on a device.
+
+**Coming later:** Brave is planning custom scriptlets (small scripts that run on a page) for iPhone, starting with a Developer Mode toggle for custom filters ([brave/brave-browser#57848](https://github.com/brave/brave-browser/issues/57848), part of [#53511](https://github.com/brave/brave-browser/issues/53511)). There is no release date yet. Once it ships, the redirects and the swipe lock could be ported to Brave.
+
+### Firefox
+
+Firefox on iPhone does not support extensions or userscripts, so nothing from this repo works there.
+
+Why: in a [Mozilla support thread](https://support.mozilla.org/en-US/questions/1486487), Mozilla says that add-ons for desktop and Android Firefox are not available on Firefox for iOS. Apple requires every iOS browser to be built on its WebKit engine, and the thread describes Firefox on iOS as basically a shell around that engine, with limited extension abilities.
 
 ## Home Screen icon with Shortcuts (iPhone)
 
