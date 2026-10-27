@@ -13,7 +13,7 @@ Guidance for Claude Code when working in this repository.
 - `filters/brave.txt` - Brave custom filters for Instagram on iPhone: hides the Reels button and the profile Reels tab, blocks the bare `/reels/` page when loaded directly. No YouTube rules: Brave has a built-in Shorts blocker.
 - `README.md` - why Userscripts is needed, Safari install guide, Shortcuts Home Screen icon tutorial, limitations.
 
-There is no build step, package manager or test suite.
+There is no build step or package manager. `tests/userscripts.test.mjs` runs dependency-free DOM regression checks using Node.js 24+ and an installed Chromium browser.
 
 ## Hard rules for the scripts
 
@@ -35,11 +35,11 @@ node --check scripts/<file>.user.js
 grep -nP '[^\x00-\x7F]' scripts/<file>.user.js || echo "ASCII only: OK"
 ```
 
-Both must pass (the grep must print the OK line). Behavior cannot be tested in this environment: the scripts have to be tried on an iPhone in Safari with Userscripts enabled. Say clearly when a change is untested on a device.
+Both must pass (the grep must print the OK line). Also run `node --test tests/userscripts.test.mjs` (`CHROMIUM_NO_SANDBOX=1` in a container without a working Chromium sandbox; `CHROMIUM_PATH` overrides the executable). These are local DOM fixtures, not validation of live site markup or Safari extension injection. The scripts still have to be tried on an iPhone in Safari with Userscripts enabled. Say clearly when a change is untested on a device.
 
 ## Known unverified assumptions
 
-- `/?variant=following` as the Instagram Following feed. If Instagram stops honoring it, remove the home redirect block in `redirectIfBlocked`.
+- `variant=following` as the Instagram Following feed. If Instagram stops honoring it, set `FORCE_FOLLOWING = false`.
 - The post-hiding heuristic in the Instagram script (Follow button or "Suggested"/"Sponsored" label in the post header, English and Czech) may over- or under-hide when Instagram changes its markup.
 - The `$document` rules in `filters/brave.txt` (blocking the bare `/reels/` page) and whether Brave on iPhone applies them. Custom scriptlets on Brave iOS are tracked in brave/brave-browser#57848 (parent #53511); when they ship, the script's redirects and swipe lock can be ported.
 - Home Screen web apps added through Safari may not load Safari extensions, which is why the README uses Shortcuts for the icon.

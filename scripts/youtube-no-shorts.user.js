@@ -29,19 +29,19 @@
     'ytd-guide-entry-renderer:has(a[title="Shorts"]),' +
     'ytd-mini-guide-entry-renderer[aria-label="Shorts"],' +
     'yt-tab-shape[tab-title="Shorts"],' +
-    'a[href^="/shorts"] { display: none !important; }';
+    '[data-nms-shorts-chip] { display: none !important; }';
   document.documentElement.appendChild(style);
 
   // 3) JS sweep for things CSS cannot match (text-based)
-  function hide(el) {
-    el.style.setProperty('display', 'none', 'important');
-  }
-
   function sweep() {
     document
       .querySelectorAll('ytm-pivot-bar-item-renderer, ytm-chip-cloud-chip-renderer, yt-chip-cloud-chip-renderer')
       .forEach(function (el) {
-        if (el.textContent.trim().toLowerCase() === 'shorts') hide(el);
+        if (el.textContent.trim().toLowerCase() === 'shorts') {
+          el.setAttribute('data-nms-shorts-chip', '');
+        } else {
+          el.removeAttribute('data-nms-shorts-chip');
+        }
       });
   }
 
@@ -54,15 +54,17 @@
       scheduled = false;
       sweep();
     });
-  }).observe(document.documentElement, { childList: true, subtree: true });
+  }).observe(document.documentElement, { childList: true, subtree: true, characterData: true });
 
   var lastHref = '';
   setInterval(function () {
     if (location.href !== lastHref) {
       lastHref = location.href;
       redirectShorts();
+      sweep();
     }
   }, 300);
 
   redirectShorts();
+  sweep();
 })();

@@ -7,13 +7,22 @@
 ! Reels button (the search icon is left alone, it opens Explore + search)
 instagram.com##a[href="/reels/"]
 instagram.com##a[href="/reels"]
+instagram.com##a[href^="/reels/?"]
+instagram.com##a[href^="/reels?"]
 
 ! Reels tab on profiles (/<username>/reels/). Safari keeps this tab because its swipe lock stops
 ! each reel; Brave has no swipe lock, so the tab is hidden here. Delete this rule to keep it.
 instagram.com##a[href$="/reels/"]
+instagram.com##a[href$="/reels"]
 
 ! Block the Reels feed page when it is loaded directly (link or typed address).
 ! Only the bare feed: single reels (/reel/<id>, /reels/<id>) still open.
+! Query prefixes have no end anchor, so tracking parameters are also covered.
 |https://www.instagram.com/reels/|$document
 |https://www.instagram.com/reels|$document
 |https://www.instagram.com/reels/?$document
+|https://www.instagram.com/reels?$document
+|https://instagram.com/reels/|$document
+|https://instagram.com/reels|$document
+|https://instagram.com/reels/?$document
+|https://instagram.com/reels?$document
