@@ -4,6 +4,7 @@
 // @match        *://*.youtube.com/*
 // @run-at       document-start
 // @noframes
+// @license      MIT
 // ==/UserScript==
 
 (function () {

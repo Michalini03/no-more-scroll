@@ -109,7 +109,7 @@ A site opened in a Safari tab cannot send push notifications on iPhone. Web push
 
 - **Sites change.** These scripts rely on page structure and wording that Instagram and YouTube can change at any time. If something stops working, open an issue or adjust the selectors.
 - **Instagram "Following" feed.** The redirect to `/?variant=following` is based on how Instagram's web home worked when this was written. It has a 10-second cooldown to avoid redirect loops. If Instagram changes this parameter, delete that block in `redirectIfBlocked`.
-- **Hiding posts from accounts you do not follow** is a heuristic. It hides posts whose header contains a "Follow" button or a "Suggested"/"Sponsored" label (English and Czech). Add your own language to `FOLLOW_WORDS` and `LABELS` in the script.
+- **Hiding posts from accounts you do not follow** works only on the home feed (profiles and opened posts are never hidden) and is a heuristic. It hides a post only when its header has a "Follow" button or a label that is exactly "Suggested", "Suggested for you" or "Sponsored" (or the Czech equivalent). Posts without a header are left alone. If suggested posts start showing up, Instagram has probably changed the label wording: add the exact text, in lowercase, to `FOLLOW_WORDS` or `LABELS` in the script.
 - **Explore is blocked** by default because it is another endless feed. The search icon and `/explore/search/` still work, so you can look up profiles. Other Explore pages (hashtags, places) redirect home. To allow all of Explore, set `BLOCK_EXPLORE = false` at the top of the Instagram script.
 - Tested on iPhone with Safari and Userscripts. Not tested on Android or desktop.
 

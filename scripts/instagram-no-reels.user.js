@@ -4,6 +4,7 @@
 // @match        *://*.instagram.com/*
 // @run-at       document-start
 // @noframes
+// @license      MIT
 // ==/UserScript==
 
 (function () {
@@ -124,18 +125,39 @@
   // ---------- Hide posts from accounts you do not follow ----------
   // Czech words are written as unicode escapes to keep this file pure ASCII.
   var FOLLOW_WORDS = ['follow', 'sledovat'];
-  var LABELS = ['suggested', 'sponsored', 'navrhov\u00e1no', 'doporu\u010deno', 'sponzorov\u00e1no', 'reklama'];
+  var LABELS = [
+    'suggested', 'suggested for you', 'sponsored',
+    'navrhov\u00e1no', 'navrhov\u00e1no pro v\u00e1s',
+    'doporu\u010deno', 'doporu\u010deno pro v\u00e1s',
+    'sponzorov\u00e1no', 'reklama'
+  ];
+
+  // A profile link is a single path segment such as /someone/ (not /explore/..., /p/..., /reels/...)
+  var NOT_PROFILES = ['explore', 'reels', 'reel', 'p', 'direct', 'stories', 'accounts', 'tv', 'about', 'legal'];
+  function profileNames(header) {
+    var seen = {};
+    var links = header.querySelectorAll('a[href]');
+    for (var i = 0; i < links.length; i++) {
+      var m = (links[i].getAttribute('href') || '').match(/^\/([A-Za-z0-9._]+)\/?$/);
+      if (m && NOT_PROFILES.indexOf(m[1].toLowerCase()) === -1) seen[m[1].toLowerCase()] = true;
+    }
+    return Object.keys(seen);
+  }
 
   function isForeignPost(article) {
-    var header = article.querySelector('header') || article;
+    // Only look in the post header. Without one, leave the post alone:
+    // searching the whole post also hits captions and comments.
+    var header = article.querySelector('header');
+    if (!header) return false;
+    // Collaboration post: several accounts in the header. The Follow button then usually
+    // belongs to a co-author, so it must not hide the post. Labels still apply.
+    var isCollab = profileNames(header).length >= 2;
     var candidates = header.querySelectorAll('button, div[role="button"], span');
     for (var i = 0; i < candidates.length; i++) {
       var t = (candidates[i].textContent || '').trim().toLowerCase();
       if (!t || t.length > 40) continue;
-      if (FOLLOW_WORDS.indexOf(t) !== -1) return true;
-      for (var j = 0; j < LABELS.length; j++) {
-        if (t.indexOf(LABELS[j]) !== -1) return true;
-      }
+      if (!isCollab && FOLLOW_WORDS.indexOf(t) !== -1) return true;
+      if (LABELS.indexOf(t) !== -1) return true;
     }
     return false;
   }
@@ -145,14 +167,21 @@
     if (DEBUG) console.log('hid post');
   }
 
+  // Only the home feed. Profiles and post pages (/p/<id>) also render posts as
+  // <article>, and hiding those left a black screen when opening a post.
+  function isHomeFeed() {
+    return location.pathname === '/';
+  }
+
   function sweepPosts() {
+    if (!isHomeFeed()) return;
     var articles = document.querySelectorAll('article:not([data-ig-checked])');
     articles.forEach(function (a) {
       if (isForeignPost(a)) hidePost(a);
       a.setAttribute('data-ig-checked', '1');
       // Headers may render lazily, so check again shortly after
       setTimeout(function () {
-        if (isForeignPost(a)) hidePost(a);
+        if (isHomeFeed() && isForeignPost(a)) hidePost(a);
       }, 1500);
     });
   }

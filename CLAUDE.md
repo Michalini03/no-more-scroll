@@ -18,7 +18,7 @@ There is no build step, package manager or test suite.
 ## Hard rules for the scripts
 
 1. **Pure ASCII only.** A version containing accented characters (Czech words) stopped being detected by Userscripts. Write non-ASCII text as `\u` escapes, for example `navrhováno`. This applies to comments and the metadata header too.
-2. **Keep the metadata header simple and valid.** `// ==UserScript==` block with `@name`, `@description`, `@match`, `@run-at document-start` and `@noframes`. Keep the file name ending in `.user.js`. Two files with the same `@name` can confuse the extension.
+2. **Keep the metadata header simple and valid.** `// ==UserScript==` block with `@name`, `@description`, `@match`, `@run-at document-start`, `@noframes` and `@license MIT`. Keep the file name ending in `.user.js`. Two files with the same `@name` can confuse the extension.
 3. **Plain, conservative JavaScript** (`var`, `function`, no build tooling, no external dependencies). Scripts must be self-contained single files.
 4. **The sites are single-page apps.** The scripts run once at load, so they use a `MutationObserver` for lazy-rendered elements and a 300 ms `location.href` poll for navigation. Do not rely on a page reload.
 5. **Prefer stable hooks** such as `href`, `role`, `aria-label`, `position: fixed` and the presence of a `<video>`. Instagram and YouTube class names are obfuscated and change often.
