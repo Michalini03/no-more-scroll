@@ -8,8 +8,8 @@ The idea: delete the native apps, use the sites in Safari instead, and let a use
 
 | Script | Site | What it does |
 | --- | --- | --- |
-| [`scripts/instagram-no-reels.user.js`](scripts/instagram-no-reels.user.js) | instagram.com | Hides the Reels button, redirects the Reels page to the home page, turns the Explore grid into a search-only page (so you can still look up profiles), locks swiping inside a reel (so a reel a friend sends you, or one you open from a profile's Reels tab, plays once and you cannot scroll on to the next), tries to switch the home feed to "Following" and hides posts from accounts you do not follow (suggested or sponsored posts). |
-| [`scripts/youtube-no-shorts.user.js`](scripts/youtube-no-shorts.user.js) | youtube.com | Hides the Shorts shelves, tab and buttons, and turns `/shorts/<id>` links into normal `/watch?v=<id>` pages so you can still watch a Short someone sends you without the swipe feed. |
+| [`scripts/instagram-no-reels.user.js`](scripts/instagram-no-reels.user.js) | instagram.com | Hides the Reels link without hiding its surrounding navigation, redirects the Reels feed home, keeps Explore search, and blocks swiping to the next reel while allowing comments to scroll. Optional Following redirects and suggested/sponsored post filtering are enabled by default. |
+| [`scripts/youtube-no-shorts.user.js`](scripts/youtube-no-shorts.user.js) | youtube.com | Hides Shorts shelves and navigation, keeps ordinary shared video links visible, and turns `/shorts/<id>` links into normal `/watch?v=<id>` pages without the swipe feed. |
 
 ## Why Userscripts?
 
@@ -37,6 +37,19 @@ Tips:
 - Keep the files pure ASCII. Accented characters caused a script to silently fail to load during development, which is why the Czech words in the Instagram script are written as `\u` escapes.
 - Keep a backup copy outside the Userscripts folder, so you can roll back if a site changes.
 
+## Instagram options
+
+Edit the switches near the top of `scripts/instagram-no-reels.user.js`, then save the file back to your Userscripts folder and reload the page:
+
+| Switch | Default | Purpose |
+| --- | --- | --- |
+| `BLOCK_EXPLORE` | `true` | Keep Explore search available while blocking the endless grid and other Explore feeds. |
+| `FORCE_FOLLOWING` | `true` | Try to open the Following feed on home. Set to `false` if Instagram stops supporting its URL parameter. |
+| `HIDE_SUGGESTED_POSTS` | `true` | Hide suggested/sponsored posts on home using the header heuristic. Set to `false` independently of the Following redirect. |
+| `DEBUG` | `false` | Log hidden posts and outline detected reel overlays while blocking a swipe. |
+
+The Reels feed remains blocked regardless of these switches. Shared `/reel/<id>` and `/reels/<id>` pages remain available.
+
 ## Other browsers on iPhone
 
 Every iPhone browser uses Safari's engine, but only Safari can load Safari extensions such as Userscripts. Other browsers get less.
@@ -62,7 +75,7 @@ Every iPhone browser uses Safari's engine, but only Safari can load Safari exten
 
 - Hide the Reels button.
 - Hide the Reels tab on profiles. Brave cannot lock swiping, so a reel opened from this tab could lead into the endless feed.
-- Block the Reels page when you open it directly, from a link or by typing the address.
+- Block the Reels feed when opened directly, including `/reels`, `/reels/` and tracking-query variants on `instagram.com` and `www.instagram.com`. Individual reel URLs remain available.
 
 **What they cannot do.** Filters can only hide and block, they cannot run code, so:
 
@@ -70,7 +83,7 @@ Every iPhone browser uses Safari's engine, but only Safari can load Safari exten
 - Swiping inside a reel is not locked.
 - There is no switch to the "Following" feed and no hiding of posts from accounts you do not follow.
 
-> These rules are not yet tested on a device.
+> URL-matching regression cases are covered by the local tests below. Native Brave filter-engine support and behavior on an iPhone are not yet verified.
 
 **Coming later:** Brave is planning custom scriptlets (small scripts that run on a page) for iPhone, starting with a Developer Mode toggle for custom filters ([brave/brave-browser#57848](https://github.com/brave/brave-browser/issues/57848), part of [#53511](https://github.com/brave/brave-browser/issues/53511)). There is no release date yet. Once it ships, the redirects and the swipe lock could be ported to Brave.
 
@@ -108,10 +121,33 @@ A site opened in a Safari tab cannot send push notifications on iPhone. Web push
 ## Known limitations
 
 - **Sites change.** These scripts rely on page structure and wording that Instagram and YouTube can change at any time. If something stops working, open an issue or adjust the selectors.
-- **Instagram "Following" feed.** The redirect to `/?variant=following` is based on how Instagram's web home worked when this was written. It has a 10-second cooldown to avoid redirect loops. If Instagram changes this parameter, delete that block in `redirectIfBlocked`.
-- **Hiding posts from accounts you do not follow** works only on the home feed (profiles and opened posts are never hidden) and is a heuristic. It hides a post only when its header has a "Follow" button or a label that is exactly "Suggested", "Suggested for you" or "Sponsored" (or the Czech equivalent). Posts without a header are left alone. If suggested posts start showing up, Instagram has probably changed the label wording: add the exact text, in lowercase, to `FOLLOW_WORDS` or `LABELS` in the script.
+- **Instagram "Following" feed.** The `variant=following` parameter is based on how Instagram's web home worked when this was written. The redirect preserves other query parameters and the fragment. It has a 10-second cooldown and is skipped if session storage is unavailable, so the cooldown can always survive a reload. If Instagram changes this parameter, set `FORCE_FOLLOWING = false`.
+- **Hiding posts from accounts you do not follow** works only on home and is a heuristic. It checks the post header for "Follow" or exact suggested/sponsored labels in English and Czech. A Follow button alone does not hide collaboration posts with multiple profile links; sponsored labels still apply. Headerless posts are left alone and checked again when their content changes. Recycled articles are reevaluated, and filtering is inactive on profiles and opened posts. If Instagram changes its wording, update `FOLLOW_WORDS` or `LABELS`, or set `HIDE_SUGGESTED_POSTS = false`.
+- **Comment scrolling** is allowed inside scrollable panels that do not contain a video. At panel edges the gesture is blocked to prevent scrolling into the next reel. This is still a markup heuristic; panels containing embedded videos may remain locked. Pinch zoom and editable fields are left alone.
 - **Explore is blocked** by default because it is another endless feed. The search icon and `/explore/search/` still work, so you can look up profiles. Other Explore pages (hashtags, places) redirect home. To allow all of Explore, set `BLOCK_EXPLORE = false` at the top of the Instagram script.
-- Tested on iPhone with Safari and Userscripts. Not tested on Android or desktop.
+- Earlier versions were tested on iPhone with Safari and Userscripts. The current fixes have local Chromium fixture coverage, but have not been retested on an iPhone or against the live sites. Android and desktop site compatibility remain unverified.
+
+## Development checks
+
+The userscripts remain standalone files: no build step, package install or external runtime dependencies. Local regression tests use Node.js 24+ and an installed Chromium browser:
+
+```bash
+node --check scripts/instagram-no-reels.user.js
+node --check scripts/youtube-no-shorts.user.js
+node --test tests/userscripts.test.mjs
+```
+
+Set `CHROMIUM_PATH` if the executable is not named `chromium`. In a container without a working Chromium sandbox, run `CHROMIUM_NO_SANDBOX=1 node --test tests/userscripts.test.mjs`. The test browser only loads local fixtures, and its temporary profile and HTTP server are cleaned up afterward.
+
+Tests cover ASCII/metadata, incremental navigation rendering, lazy and recycled post headers, SPA navigation, feature switches, redirect cooldown/storage failures, comment scroll boundaries, shared Shorts links and Brave URL patterns. The filter tests implement only the literal patterns and anchors used in this file; they do not run Brave's native engine. These checks do not validate Userscripts injection or current Instagram/YouTube markup in Safari.
+
+Before shipping a change, also check on an iPhone:
+
+1. Safari with Userscripts: Reels/Explore feeds are blocked, search works, and navigation and followed posts remain visible.
+2. Open a shared reel directly and from a DM: playback works, comments scroll, and swiping at their edges does not advance to another reel.
+3. Navigate between home, a profile and a shared post; check that posts are not left hidden outside home. Try the feature switches independently.
+4. Open a shared Short and confirm the regular player loads; check that Shorts shelves/navigation hide while ordinary shared links remain available.
+5. In Brave, try direct Reels feed URLs with/without a slash and query parameters, then confirm individual reels still open.
 
 ## Security note
 

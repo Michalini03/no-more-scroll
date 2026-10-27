@@ -11,6 +11,8 @@
   'use strict';
 
   var BLOCK_EXPLORE = true;
+  var FORCE_FOLLOWING = true;
+  var HIDE_SUGGESTED_POSTS = true;
   var DEBUG = false;
 
   var BLOCKED_PATH = BLOCK_EXPLORE
@@ -23,8 +25,6 @@
   function isSearchPath(p) {
     return /^\/explore\/search(\/|$)/.test(p);
   }
-
-  var LINK_SELECTOR = 'a[href="/reels/"], a[href="/reels"]';
 
   function isSingleReelUrl() {
     return /^\/reels?\/[^/]+/.test(location.pathname);
@@ -48,14 +48,55 @@
   }
 
   function isLockedTarget(target) {
+    if (!(target instanceof Element)) return null;
     if (target.closest && target.closest('textarea, input, [contenteditable="true"]')) return null;
     if (isSingleReelUrl()) return document.body;
     return findReelViewer(target);
   }
 
+  // Let non-video panels scroll, but block gestures at their edges so they
+  // cannot chain into the next reel. Video containers remain locked.
+  function canScrollPanel(target, viewer, dx, dy) {
+    var horizontal = Math.abs(dx) > Math.abs(dy);
+    var delta = horizontal ? dx : dy;
+    for (var el = target; el && el !== viewer && el !== document.body; el = el.parentElement) {
+      if (el.tagName === 'VIDEO' || el.querySelector('video')) continue;
+      var cs = getComputedStyle(el);
+      var overflow = horizontal ? cs.overflowX : cs.overflowY;
+      if (!/^(auto|scroll)$/.test(overflow)) continue;
+      var position = horizontal ? el.scrollLeft : el.scrollTop;
+      var size = horizontal ? el.clientWidth : el.clientHeight;
+      var extent = horizontal ? el.scrollWidth : el.scrollHeight;
+      if ((delta < 0 && position > 0) || (delta > 0 && position + size < extent - 1)) return true;
+    }
+    return false;
+  }
+
+  var touchX = null;
+  var touchY = null;
+  document.addEventListener('touchstart', function (e) {
+    touchX = e.touches.length === 1 ? e.touches[0].clientX : null;
+    touchY = e.touches.length === 1 ? e.touches[0].clientY : null;
+  }, { passive: true, capture: true });
+
   function blocker(e) {
+    // Preserve pinch zoom and track each move, including moves in comments.
+    if (e.ctrlKey) return;
+    var dx = e.deltaX || 0;
+    var dy = e.deltaY || 0;
+    if (e.touches) {
+      if (e.touches.length !== 1) {
+        touchX = touchY = null;
+        return;
+      }
+      dx = touchX === null ? 0 : touchX - e.touches[0].clientX;
+      dy = touchY === null ? 0 : touchY - e.touches[0].clientY;
+      touchX = e.touches[0].clientX;
+      touchY = e.touches[0].clientY;
+    }
     var viewer = isLockedTarget(e.target);
     if (!viewer) return;
+    if (canScrollPanel(e.target, viewer, dx, dy)) return;
     e.preventDefault();
     e.stopPropagation();
     if (DEBUG && viewer !== document.body) viewer.style.outline = '3px solid red';
@@ -66,11 +107,13 @@
   var style = document.createElement('style');
   style.textContent =
     'html.ig-single-reel, html.ig-single-reel body { overflow: hidden !important; overscroll-behavior: none !important; }' +
-    'html.ig-single-reel * { scroll-snap-type: none !important; }';
+    'a[href="/reels/"], a[href="/reels"], a[href^="/reels/?"], a[href^="/reels?"] { display: none !important; }' +
+    'html.ig-home-feed article[data-ig-hidden-post] { display: none !important; }';
   document.documentElement.appendChild(style);
 
-  function syncReelLock() {
+  function syncPageState() {
     document.documentElement.classList.toggle('ig-single-reel', isSingleReelUrl());
+    document.documentElement.classList.toggle('ig-home-feed', HIDE_SUGGESTED_POSTS && isHomeFeed());
   }
 
   // ---------- Redirects ----------
@@ -78,7 +121,7 @@
     try { return sessionStorage.getItem(k); } catch (e) { return null; }
   }
   function safeSet(k, v) {
-    try { sessionStorage.setItem(k, v); } catch (e) {}
+    try { sessionStorage.setItem(k, v); return true; } catch (e) { return false; }
   }
 
   function redirectIfBlocked() {
@@ -92,22 +135,14 @@
       return;
     }
     // Home -> Following feed. Cooldown prevents redirect loops.
-    if (location.pathname === '/' && !/variant=following/.test(location.search)) {
+    if (FORCE_FOLLOWING && location.pathname === '/' && !/(?:[?&])variant=following(?:&|$)/.test(location.search)) {
       var last = Number(safeGet('ig-follow-redirect') || 0);
-      if (Date.now() - last > 10000) {
-        safeSet('ig-follow-redirect', String(Date.now()));
-        location.replace('/?variant=following');
+      if (Date.now() - last > 10000 && safeSet('ig-follow-redirect', String(Date.now()))) {
+        var url = new URL(location.href);
+        url.searchParams.set('variant', 'following');
+        location.replace(url.href);
       }
     }
-  }
-
-  // ---------- Hide nav links ----------
-  function hideItem(a) {
-    var el = a;
-    while (el.parentElement && el.parentElement !== document.body && el.parentElement.children.length === 1) {
-      el = el.parentElement;
-    }
-    el.style.setProperty('display', 'none', 'important');
   }
 
   // ---------- Search icon goes straight to search ----------
@@ -135,7 +170,7 @@
   // A profile link is a single path segment such as /someone/ (not /explore/..., /p/..., /reels/...)
   var NOT_PROFILES = ['explore', 'reels', 'reel', 'p', 'direct', 'stories', 'accounts', 'tv', 'about', 'legal'];
   function profileNames(header) {
-    var seen = {};
+    var seen = Object.create(null);
     var links = header.querySelectorAll('a[href]');
     for (var i = 0; i < links.length; i++) {
       var m = (links[i].getAttribute('href') || '').match(/^\/([A-Za-z0-9._]+)\/?$/);
@@ -162,11 +197,6 @@
     return false;
   }
 
-  function hidePost(a) {
-    a.style.setProperty('display', 'none', 'important');
-    if (DEBUG) console.log('hid post');
-  }
-
   // Only the home feed. Profiles and post pages (/p/<id>) also render posts as
   // <article>, and hiding those left a black screen when opening a post.
   function isHomeFeed() {
@@ -174,42 +204,46 @@
   }
 
   function sweepPosts() {
-    if (!isHomeFeed()) return;
-    var articles = document.querySelectorAll('article:not([data-ig-checked])');
+    if (!HIDE_SUGGESTED_POSTS || !isHomeFeed()) return;
+    var articles = document.querySelectorAll('article');
     articles.forEach(function (a) {
-      if (isForeignPost(a)) hidePost(a);
-      a.setAttribute('data-ig-checked', '1');
-      // Headers may render lazily, so check again shortly after
-      setTimeout(function () {
-        if (isHomeFeed() && isForeignPost(a)) hidePost(a);
-      }, 1500);
+      // Recheck lazy headers and recycled articles. CSS only hides them on home.
+      if (isForeignPost(a)) {
+        if (!a.hasAttribute('data-ig-hidden-post')) {
+          a.setAttribute('data-ig-hidden-post', '');
+          if (DEBUG) console.log('hid post');
+        }
+      } else {
+        a.removeAttribute('data-ig-hidden-post');
+      }
     });
   }
 
-  function sweep() {
-    document.querySelectorAll(LINK_SELECTOR).forEach(hideItem);
-    sweepPosts();
-  }
-
   var scheduled = false;
-  new MutationObserver(function () {
+  function scheduleSweep() {
     if (scheduled) return;
     scheduled = true;
     requestAnimationFrame(function () {
       scheduled = false;
-      sweep();
+      sweepPosts();
     });
-  }).observe(document.documentElement, { childList: true, subtree: true });
+  }
+  new MutationObserver(scheduleSweep).observe(document.documentElement, {
+    childList: true, subtree: true, characterData: true,
+    attributes: true, attributeFilter: ['href', 'role']
+  });
 
   var lastHref = '';
   setInterval(function () {
     if (location.href !== lastHref) {
       lastHref = location.href;
       redirectIfBlocked();
-      syncReelLock();
+      syncPageState();
+      scheduleSweep();
     }
   }, 300);
 
   redirectIfBlocked();
-  syncReelLock();
+  syncPageState();
+  scheduleSweep();
 })();
